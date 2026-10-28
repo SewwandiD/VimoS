@@ -1,0 +1,10 @@
+# Database credentials - NEVER commit this
+config/db.php
+
+# XAMPP / Windows system files
+Thumbs.db
+.DS_Store
+
+# Editor folders
+.vscode/
+.idea/
