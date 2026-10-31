@@ -1,139 +1,234 @@
+<?php
+// public/dashboard.php
+require_once __DIR__ . '/../config/db.php';
+require_once __DIR__ . '/../includes/auth.php';
+
+// Only logged-in hosts may see this page
+require_host_login();
+
+$host_id = $_SESSION['host_id'];
+
+// Fetch ONLY this host's pending requests, joined with visitor details
+$stmt = $pdo->prepare("
+    SELECT vr.request_id, v.name, v.nic, v.email, vr.purpose, vr.expected_visit_at
+    FROM visit_requests vr
+    JOIN visitors v ON v.visitor_id = vr.visitor_id
+    WHERE vr.host_id = ? AND vr.status = 'pending'
+    ORDER BY vr.expected_visit_at ASC
+");
+$stmt->execute([$host_id]);
+$pending = $stmt->fetchAll();
+
+// Count this host's requests per status for the summary cards
+$stmt = $pdo->prepare("SELECT status, COUNT(*) AS total FROM visit_requests WHERE host_id = ? GROUP BY status");
+$stmt->execute([$host_id]);
+$counts = array_column($stmt->fetchAll(), 'total', 'status'); // e.g. ['pending' => 2, 'approved' => 1]
+?>
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
-    <title>Bootstrap Example</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Host Dashboard - VimoS</title>
     <style>
-        /* Set height of the grid so .sidenav can be 100% (adjust as needed) */
-        .row.content {
-            height: 550px
+        body {
+            font-family: sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            color: #333;
         }
 
-        /* Set gray background color and 100% height */
-        .sidenav {
-            background-color: #f1f1f1;
-            height: 100%;
+        /* Top bar */
+        .topbar {
+            background: #0066cc;
+            color: #fff;
+            padding: 14px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        /* On small screens, set height to 'auto' for the grid */
-        @media screen and (max-width: 767px) {
-            .row.content {
-                height: auto;
-            }
+        .topbar h1 {
+            margin: 0;
+            font-size: 1.2rem;
+        }
+
+        .topbar a {
+            color: #fff;
+            text-decoration: none;
+            font-size: 0.9rem;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            padding: 6px 12px;
+            border-radius: 4px;
+        }
+
+        .topbar a:hover {
+            background: #0052a3;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 24px auto;
+            padding: 0 20px;
+        }
+
+        .welcome {
+            font-size: 1.1rem;
+            margin-bottom: 20px;
+        }
+
+        /* Summary cards */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat {
+            background: #fff;
+            padding: 18px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+            border-left: 4px solid #0066cc;
+        }
+
+        .stat .num {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #0066cc;
+        }
+
+        .stat .label {
+            font-size: 0.85rem;
+            color: #888;
+        }
+
+        /* Main card */
+        .card {
+            background: #fff;
+            padding: 24px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+            margin-bottom: 24px;
+        }
+
+        .card h2 {
+            margin-top: 0;
+            font-size: 1.1rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background: #f4f6f9;
+            color: #444;
+        }
+
+        tr:hover td {
+            background: #fafbfd;
+        }
+
+        .empty {
+            color: #888;
+            font-style: italic;
+        }
+
+        .btn-approve,
+        .btn-reject {
+            border: none;
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+
+        .btn-approve {
+            background: #28a745;
+        }
+
+        .btn-reject {
+            background: #dc3545;
         }
     </style>
 </head>
 
 <body>
 
-    <nav class="navbar navbar-inverse visible-xs">
-        <div class="container-fluid">
-            <div class="navbar-header">
-                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#myNavbar">
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                    <span class="icon-bar"></span>
-                </button>
-                <a class="navbar-brand" href="#">Logo</a>
-            </div>
-            <div class="collapse navbar-collapse" id="myNavbar">
-                <ul class="nav navbar-nav">
-                    <li class="active"><a href="#">Dashboard</a></li>
-                    <li><a href="#">Age</a></li>
-                    <li><a href="#">Gender</a></li>
-                    <li><a href="#">Geo</a></li>
-                </ul>
-            </div>
-        </div>
-    </nav>
+    <header class="topbar">
+        <h1>🏢 VimoS Host Dashboard</h1>
+        <a href="logout.php">Log out</a>
+    </header>
 
-    <div class="container-fluid">
-        <div class="row content">
-            <div class="col-sm-3 sidenav hidden-xs">
-                <h2>Sample Dashboard</h2>
-                <ul class="nav nav-pills nav-stacked">
-                    <li class="active"><a href="#section1">Dashboard</a></li>
-                    <li><a href="#section2">Age</a></li>
-                    <li><a href="#section3">Gender</a></li>
-                    <li><a href="#section3">Geo</a></li>
-                </ul><br>
-            </div>
-            <br>
+    <main class="container">
+        <p class="welcome">Welcome, <strong><?= htmlspecialchars($_SESSION['host_name']) ?></strong></p>
 
-            <div class="col-sm-9">
-                <div class="well">
-                    <h4>Dashboard</h4>
-                    <p>Some text..</p>
-                </div>
-                <div class="row">
-                    <div class="col-sm-3">
-                        <div class="well">
-                            <h4>Users</h4>
-                            <p>1 Million</p>
-                        </div>
-                    </div>
-                    <div class="col-sm-3">
-                        <div class="well">
-                            <h4>Pages</h4>
-                            <p>100 Million</p>
-                        </div>
-                    </div>
-                    <div class="col-sm-3">
-                        <div class="well">
-                            <h4>Sessions</h4>
-                            <p>10 Million</p>
-                        </div>
-                    </div>
-                    <div class="col-sm-3">
-                        <div class="well">
-                            <h4>Bounce</h4>
-                            <p>30%</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-sm-4">
-                        <div class="well">
-                            <p>Text</p>
-                            <p>Text</p>
-                            <p>Text</p>
-                        </div>
-                    </div>
-                    <div class="col-sm-4">
-                        <div class="well">
-                            <p>Text</p>
-                            <p>Text</p>
-                            <p>Text</p>
-                        </div>
-                    </div>
-                    <div class="col-sm-4">
-                        <div class="well">
-                            <p>Text</p>
-                            <p>Text</p>
-                            <p>Text</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-sm-8">
-                        <div class="well">
-                            <p>Text</p>
-                        </div>
-                    </div>
-                    <div class="col-sm-4">
-                        <div class="well">
-                            <p>Text</p>
-                        </div>
-                    </div>
-                </div>
+        <section class="stats">
+            <div class="stat">
+                <div class="num"><?= $counts['pending'] ?? 0 ?></div>
+                <div class="label">Pending</div>
             </div>
-        </div>
-    </div>
+            <div class="stat">
+                <div class="num"><?= $counts['approved'] ?? 0 ?></div>
+                <div class="label">Approved</div>
+            </div>
+            <div class="stat">
+                <div class="num"><?= $counts['checked_in'] ?? 0 ?></div>
+                <div class="label">Checked In</div>
+            </div>
+            <div class="stat">
+                <div class="num"><?= $counts['checked_out'] ?? 0 ?></div>
+                <div class="label">Checked Out</div>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>Pending Visit Requests (<?= count($pending) ?>)</h2>
+
+            <?php if (empty($pending)): ?>
+                <p class="empty">No pending requests.</p>
+            <?php else: ?>
+                <table>
+                    <tr>
+                        <th>Visitor</th>
+                        <th>NIC</th>
+                        <th>Purpose</th>
+                        <th>Expected</th>
+                        <th>Action</th>
+                    </tr>
+                    <?php foreach ($pending as $r): ?>
+                        <tr>
+                            <td><?= htmlspecialchars($r['name']) ?></td>
+                            <td><?= htmlspecialchars($r['nic']) ?></td>
+                            <td><?= htmlspecialchars($r['purpose']) ?></td>
+                            <td><?= htmlspecialchars($r['expected_visit_at']) ?>
+                            <td>
+                                <form action="update_status.php" method="POST" style="display:inline">
+                                    <input type="hidden" name="request_id" value="<?= (int) $r['request_id'] ?>">
+                                    <button name="action" value="approve" class="btn-approve">Approve</button>
+                                    <button name="action" value="reject" class="btn-reject"
+                                        onclick="return confirm('Reject this request?')">Reject</button>
+                                </form>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </table>
+            <?php endif; ?>
+        </section>
+    </main>
 
 </body>
 
