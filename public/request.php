@@ -273,6 +273,10 @@ try {
 
             <button type="submit">Submit Visit Request</button>
         </form>
+        <p style="margin-top: 18px; font-size: 0.88rem; color: #555; text-align: center;">
+            Are you a staff host? <a href="login.php"
+                style="color: #0066cc; text-decoration: none; font-weight: 600;">Host login</a>
+        </p>
     </div>
 
 </body>

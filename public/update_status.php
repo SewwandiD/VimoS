@@ -3,26 +3,27 @@
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/auth.php';
 
-require_host_login();
+// 1. Every host page/action must enforce login first
+require_login();
 
-// Only accept POST — a status change must never happen from a simple link click
+// 2. Only accept POST requests — never allow state changes via a GET link
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header('Location: dashboard.php');
     exit;
 }
 
+// 3. Cast request_id to integer and read the button action ('approve' or 'reject')
 $request_id = (int) ($_POST['request_id'] ?? 0);
 $action = $_POST['action'] ?? '';
 
+// 4. Update status ONLY if the request belongs to the logged-in host AND is currently 'pending'
 if ($action === 'approve') {
-    // 32 random bytes → 64 hex characters (fits qr_token varchar(64))
-    $token = bin2hex(random_bytes(32));
     $stmt = $pdo->prepare("
         UPDATE visit_requests
-        SET status = 'approved', qr_token = ?
+        SET status = 'approved'
         WHERE request_id = ? AND host_id = ? AND status = 'pending'
     ");
-    $stmt->execute([$token, $request_id, $_SESSION['host_id']]);
+    $stmt->execute([$request_id, $_SESSION['host_id']]);
 
 } elseif ($action === 'reject') {
     $stmt = $pdo->prepare("
@@ -32,6 +33,6 @@ if ($action === 'approve') {
     ");
     $stmt->execute([$request_id, $_SESSION['host_id']]);
 }
-
-header('Location: dashboard.php');
+$redirect = ($_POST['from'] ?? '') === 'requests' ? 'visit_requests.php' : 'dashboard.php';
+header('Location: ' . $redirect);
 exit;

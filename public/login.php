@@ -12,6 +12,12 @@ if (is_host_logged_in()) {
 }
 
 $error_message = '';
+$success_message = '';
+
+// Check if the user was just redirected here from signup.php
+if (isset($_GET['registered']) && $_GET['registered'] === '1') {
+    $success_message = 'Account created successfully! Please sign in below.';
+}
 
 // Only process when form is submitted via POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -94,6 +100,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             font-size: 0.9rem;
         }
 
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            padding: 10px 14px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+            font-size: 0.9rem;
+        }
+
+        .nav-links {
+            margin-top: 18px;
+            font-size: 0.88rem;
+            color: #555;
+            text-align: center;
+            line-height: 1.8;
+        }
+
+        .nav-links a {
+            color: #0066cc;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+
         .form-group {
             margin-bottom: 16px;
         }
@@ -145,7 +179,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <div class="login-card">
         <h1>🔐 Host Portal Login</h1>
-
+        <?php if ($success_message): ?>
+            <div class="alert-success">
+                <?= htmlspecialchars($success_message) ?>
+            </div>
+        <?php endif; ?>
         <?php if ($error_message): ?>
             <div class="alert-error">
                 <?= htmlspecialchars($error_message) ?>
@@ -170,7 +208,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <button type="submit">Sign In</button>
         </form>
 
-        <p class="note">Authorized hosts only. Visitors do not need an account.</p>
+        <div class="nav-links">
+            New host? <a href="signup.php">Sign up</a><br>
+            Are you a visitor? <a href="request.php">Request a visit</a>
+        </div>
     </div>
 
 </body>

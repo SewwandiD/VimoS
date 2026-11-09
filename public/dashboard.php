@@ -4,7 +4,7 @@ require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/auth.php';
 
 // Only logged-in hosts may see this page
-require_host_login();
+require_login();
 
 $host_id = $_SESSION['host_id'];
 
@@ -163,15 +163,22 @@ $counts = array_column($stmt->fetchAll(), 'total', 'status'); // e.g. ['pending'
         .btn-reject {
             background: #dc3545;
         }
+
+        .btn-delete {
+            border: none;
+            background: #6c757d;
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
     </style>
 </head>
 
 <body>
 
-    <header class="topbar">
-        <h1>🏢 VimoS Host Dashboard</h1>
-        <a href="logout.php">Log out</a>
-    </header>
+    <?php require_once __DIR__ . '/../includes/nav.php'; ?>
 
     <main class="container">
         <p class="welcome">Welcome, <strong><?= htmlspecialchars($_SESSION['host_name']) ?></strong></p>
@@ -214,13 +221,18 @@ $counts = array_column($stmt->fetchAll(), 'total', 'status'); // e.g. ['pending'
                             <td><?= htmlspecialchars($r['name']) ?></td>
                             <td><?= htmlspecialchars($r['nic']) ?></td>
                             <td><?= htmlspecialchars($r['purpose']) ?></td>
-                            <td><?= htmlspecialchars($r['expected_visit_at']) ?>
+                            <td><?= htmlspecialchars($r['expected_visit_at']) ?></td>
                             <td>
                                 <form action="update_status.php" method="POST" style="display:inline">
                                     <input type="hidden" name="request_id" value="<?= (int) $r['request_id'] ?>">
                                     <button name="action" value="approve" class="btn-approve">Approve</button>
                                     <button name="action" value="reject" class="btn-reject"
                                         onclick="return confirm('Reject this request?')">Reject</button>
+                                </form>
+                                <form action="delete_request.php" method="POST" style="display:inline">
+                                    <input type="hidden" name="request_id" value="<?= (int) $r['request_id'] ?>">
+                                    <button type="submit" class="btn-delete"
+                                        onclick="return confirm('Permanently delete this request?')">Delete</button>
                                 </form>
                             </td>
                         </tr>

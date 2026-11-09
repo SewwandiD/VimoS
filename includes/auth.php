@@ -17,15 +17,26 @@ function is_host_logged_in(): bool
 
 /**
  * Enforces that only an authenticated host can access the page.
- * If not logged in, redirects immediately to login.php.
+ * Every host page calls this at the very top.
  */
-function require_host_login(): void
+function require_login(): void
 {
+    // Prevent the browser from caching protected pages (stops Back-button viewing after logout)
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
+
     if (!is_host_logged_in()) {
         // Redirect the unauthorized browser to the host login page
         header('Location: login.php');
-        // Stop executing the rest of the protected page
+        // Stop executing the rest of the protected page immediately
         exit;
     }
+}
 
+/**
+ * Alias kept so existing calls to require_host_login() also use require_login().
+ */
+function require_host_login(): void
+{
+    require_login();
 }
